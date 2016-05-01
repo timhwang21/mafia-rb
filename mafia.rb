@@ -303,3 +303,8 @@ class Mafia
     num_mafia_alive == 0
   end
 end
+
+if __FILE__==$0
+  $:.unshift File.expand_path("../../", __FILE__)  
+  Mafia.play
+end
