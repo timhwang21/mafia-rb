@@ -6,7 +6,7 @@ For use when we forget to bring cards (e.g. always, because we are forgetful), a
 
 Ratios are currently adjusted to our preferences. Currently, 11 is the maximum number of players allowed, because we don't have many friends.
 
-There is no nurse implemented, partially because this project is hacked together, but mostly because we think the nurse is overpowered and makes the game unfun and heavily chance-based. 
+There is no nurse implemented, partially because this project was hacked together in an afternoon, but mostly because we think the nurse is overpowered and makes the game unfun and overly chance-based. 
 
 ## Usage
 
