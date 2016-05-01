@@ -28,14 +28,9 @@ class Mafia
   end
 
   def self.play_joobie
-    players = {
-      0 => Player.new("Tim"),
-      1 => Player.new("Tom"),
-      2 => Player.new("Josh"),
-      3 => Player.new("Rick"),
-      4 => Player.new("Yian"),
-      5 => Player.new("Imaginary Friend")
-    }
+    players = {}
+    friends = %w(Tim Tom Josh Rick Yian ImaginaryFriend)
+    friends.each_with_index { |friend, idx| players[idx] = Player.new(friend)}
     
     Mafia.new(players).run
   end
