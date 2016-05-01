@@ -2,6 +2,8 @@ require_relative 'player'
 
 class Mafia
   attr_reader :players, :round
+  attr_accessor :current_player
+
   def initialize(players = nil)
     @players = players ? players : get_players
     @round = 1
@@ -16,6 +18,7 @@ class Mafia
       handle_day
       @round += 1
     end
+
     system('clear')
     handle_win
   end
@@ -42,18 +45,18 @@ class Mafia
   def get_players
     players = {}
     system('clear')
-    puts "Enter your name: "
+    print "Enter your name:\n=> "
     player_name = gets.chomp
 
     until player_name == ""
       players[players.length] = Player.new(player_name)
       system('clear')
-      puts "Hi, #{player_name}. You've been added to the game. Please press enter and pass the computer to your left."
+      puts "Hi, #{player_name}. You've been added to the game. Please press ENTER and pass the computer to your left."
       gets
 
       system('clear')
-      puts "You have enough players! Press enter to start, or add more players."if players.length >= 5
-      puts "Enter your name: "
+      puts "You have enough players! Press ENTER to start, or add more players."if players.length >= 5
+      print "Enter your name:\n=> "
       player_name = gets.chomp
     end
 
@@ -83,6 +86,18 @@ class Mafia
       deck << :inspector
       2.times { deck << :mafia }
       5.times { deck << :citizen }
+    when 9
+      deck << :inspector
+      3.times { deck << :mafia }
+      5.times { deck << :citizen }
+    when 10
+      deck << :inspector
+      3.times { deck << :mafia }
+      6.times { deck << :citizen }
+    when 11
+      deck << :inspector
+      3.times { deck << :mafia }
+      7.times { deck << :citizen }
     end
 
     deck.shuffle!
@@ -94,15 +109,14 @@ class Mafia
 
     until round.empty?
       system('clear')
-      current_player = get_current_player(round)
+      set_current_player(round)
 
       system('clear')
-      puts "Current player: #{current_player.name}\nPress enter to receive your role."
+      puts "Current player: #{current_player.name}\nPress ENTER to receive your role."
       gets
 
       system('clear')
-      puts "Your role is: #{current_player.role}"
-      puts "Pass the computer to your left."
+      puts "Your role is: #{@current_player.role.to_s.upcase}\nPass the computer to your left."
       gets
     end
 
@@ -115,33 +129,18 @@ class Mafia
     round = living_players.keys
     until round.empty? 
       system('clear')
-      puts "ROUND #{@round}: NIGHT TIME"
-      current_player = get_current_player(round)
+      puts "ROUND #{@round}: NIGHT TIME\n"
+      set_current_player(round)
 
       system('clear')
-      case current_player.role
+      case @current_player.role
       when :mafia
-        puts living_players_to_s
-        puts "Hi #{current_player.name}. You are the mafia. Enter the ID of someone to kill."
-        target = @players[gets.chomp.to_i]
-        system('clear')
-        puts "#{target.name} will die. Press any key and enter."
-        gets
+        target ||= nil
+        target = handle_mafia(target)
       when :inspector
-        puts living_players_to_s
-        puts "Hi #{current_player.name}. You are the inspector. Enter the ID of someone to inspect."
-        inspected = @players[gets.chomp.to_i]
-        system('clear')
-        puts inspected.role == :mafia ? "#{inspected.name} is a MAFIA!!!" : "#{inspected.name} is NOT a mafia."
-        puts "Press any key and enter."
-        gets
+        handle_inspector
       else
-        puts "Hi #{current_player.name}. You are a civilian. Sleeping..."
-        sleep(rand(1..3))
-        puts "Press a random key, then hit enter."
-        gets
-        puts "Press enter to continue."
-        gets
+        handle_citizen
       end
 
       system('clear')
@@ -157,7 +156,7 @@ class Mafia
     target.kill
     gets
 
-    puts "Press enter to continue."
+    puts "Press ENTER to continue."
     gets
   end
 
@@ -166,12 +165,12 @@ class Mafia
     votes = Hash[round.map {|id| [id, 0]}]
     until round.empty?
       system('clear')
-      puts "ROUND #{@round}: DAY TIME - VOTING"
-      current_player = get_current_player(round)
+      puts "ROUND #{@round}: DAY TIME - VOTING\n"
+      set_current_player(round)
 
       system('clear')
-      puts living_players_to_s
-      puts "Hi #{current_player.name}. Who do you think is the mafia?"
+      puts (@current_player.is_mafia? ? living_players_mafiavision_to_s : living_players_to_s)
+      print "__________________\nHi #{@current_player.name}. Who do you think is the mafia?\n=> "
       votes[gets.chomp.to_i] += 1
 
       system('clear')
@@ -185,7 +184,7 @@ class Mafia
 
     target_id, vote_count = votes.max_by { |id, count| count }
     if votes.select { |id, count| count == vote_count}.length > 1
-      puts "There was a tie! Press enter to restart the voting process."
+      puts "There was a tie! Press ENTER to restart the voting process."
       gets
       handle_day
     else
@@ -194,7 +193,7 @@ class Mafia
       target.kill
       gets
 
-      puts "Press enter to continue."
+      puts "Press ENTER to continue."
       gets
     end
   end
@@ -203,17 +202,53 @@ class Mafia
     mafia_win? || civilians_win?
   end
 
+  def handle_mafia(target)
+    puts "CIVILIANS\n#{living_civilians_to_s}\n\nMAFIA\n#{living_mafia_to_s}\n__________________"
+    puts "Hi, #{@current_player.name}. You are the MAFIA.\nEnter the ID of someone to kill."
+
+    puts "A previous MAFIA has selected #{target.name}. You may change the target if you want." if target
+
+    print "=> "
+    target = @players[gets.chomp.to_i]
+
+    system('clear')
+    puts "#{target.name} has been marked for death.\nPress any key and ENTER."
+    gets
+
+    target
+  end
+
+  def handle_inspector
+    puts "LIVING PLAYERS\n#{living_players_to_s}\n__________________"
+    print "Hi, #{@current_player.name}. You are the INSPECTOR.\nEnter the ID of someone to inspect.\n=> "
+    inspected = @players[gets.chomp.to_i]
+
+    system('clear')
+    puts inspected.is_mafia? ? "#{inspected.name} is a MAFIA!!!" : "#{inspected.name} is NOT a mafia."
+    puts "Press any key and ENTER."
+    gets
+  end
+
+  def handle_citizen
+    puts "Hi #{@current_player.name}. You are a civilian. Sleeping..."
+    sleep(rand(2..3))
+    puts "Press a random key, then hit ENTER."
+    gets
+    puts "Press ENTER to continue."
+    gets
+  end
+
   def handle_win
     puts civilians_win? ? "Civilians win!" : "Mafia wins!"
     puts "The mafia was: #{whois(:mafia)}"
   end
 
-  def get_current_player(round)
+  def set_current_player(round)
     puts living_players_to_s(round)
-    puts "Enter your id:"
+    print "__________________\nEnter your id:\n=> "
     id = gets.chomp.to_i
     round.delete(id)
-    @players[id]
+    @current_player = @players[id]
   end
 
   def whois(role)
@@ -232,12 +267,32 @@ class Mafia
     end
   end
 
+  def living_players_mafiavision_to_s
+    living_players.map { |id, player| "#{id}: #{player.to_s} #{("MAFIA") if player.is_mafia?}" }.join("\n")
+  end
+
+  def living_civilians
+    living_players.select { |id, player| !player.is_mafia? }
+  end
+
+  def living_civilians_to_s
+    living_civilians.map { |id, player| "#{id}: #{player.to_s}" }.join("\n")
+  end
+
+  def living_mafia
+    living_players.select { |id, player| player.is_mafia? }
+  end
+
+  def living_mafia_to_s
+    living_mafia.map { |id, player| "#{player.to_s}" }.join("\n")
+  end
+
   def num_civilians_alive
-    living_players.count { |id, player| player.role != :mafia }
+    living_civilians.length
   end
 
   def num_mafia_alive
-    living_players.count { |id, player| player.role == :mafia }
+    living_mafia.length
   end
 
   def mafia_win?

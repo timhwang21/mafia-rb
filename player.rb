@@ -15,4 +15,8 @@ class Player
   def kill
     @alive = false
   end
+
+  def is_mafia?
+    @role == :mafia
+  end
 end
